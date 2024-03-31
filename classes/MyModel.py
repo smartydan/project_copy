@@ -6,6 +6,11 @@ class MyModel(nn.Module):
     """Pretrained model with custom text classificator."""
 
     def __init__(self, device, max_len=512, pretrained_model_path="cointegrated/rubert-tiny2"):
+        """
+        :param device: device to use
+        :param max_len: maximal length for Tokenizer
+        :param pretrained_model_path: model to load for fine-tuning
+        """
         super().__init__()
         try:
             self.model = AutoModel.from_pretrained(pretrained_model_path)
@@ -18,6 +23,9 @@ class MyModel(nn.Module):
         self.path = pretrained_model_path
 
     def reinitialize(self):
+        """
+        Reloads model and tokenizer
+        """
         try:
             self.model = AutoModel.from_pretrained(self.path)
             self.tokenizer = AutoTokenizer.from_pretrained(self.path, model_max_length=self.max_len)
@@ -27,10 +35,9 @@ class MyModel(nn.Module):
 
     def forward(self, x):
         """
-        :param x: tensor (text) of input data
+        :param x: input text
         :return: tensor of output data
         """
-        tokenized = self.tokenizer(x, padding=True, truncation=True, return_tensors="pt").to(
-            self.device)  # токенизируем
+        tokenized = self.tokenizer(x, padding=True, truncation=True, return_tensors="pt").to(self.device)  # токенизируем
         output = self.model(**tokenized)  # вызываем модель
         return self.classifier(output.last_hidden_state[:, 0, :])  # вызываем классификатор

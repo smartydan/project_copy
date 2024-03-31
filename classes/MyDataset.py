@@ -10,21 +10,26 @@ class MyDataset(Dataset):
                  tokenizer=None, topic=False, spoil_proba=0.5):
         """
         :param df: input data in DataFrame format
+        :param id_column: column to set index on (default is None)
+        :param max_spoil: maximum of features to spoil
+        :param topic_spoil: maximum number of topics to add if spoiled
         :param tokenizer: tokenizer to use for word tokenization
-        :param spoil_proba: probability of spoiling a description
+        :param topic: if True topics will be included in a decription
+        :param spoil_proba: probability of spoling a description
         """
-        self.df = df
-        self.tokenizer = tokenizer
 
-        if id_column is not None:
+        self.df = df
+        self.preprocessor = preprocessor
+
+        if id_column:
             self.id_col = id_column
             self.df.set_index(id_column, inplace=True)
-
-        self.spoil_proba = spoil_proba
-        self.preprocessor = preprocessor
+    
         self.max_spoil = min(max_spoil, len(self.preprocessor.args))
         self.topic_spoil = topic_spoil
+        self.tokenizer = tokenizer
         self.topic = topic
+        self.spoil_proba = spoil_proba
 
     def __len__(self):
         """
@@ -35,17 +40,15 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         """
         :param idx: index of the sample to be returned
-        :return: [sample, target]
+        :return: [description, target]
         """
         id_ = self.df.index[idx]
+        spoil_size = topic_spoil = 0
 
-        spoil_size = 0
-        topic_spoil = 0
         if np.random.random() < self.spoil_proba:
             spoil_size = self.max_spoil
             topic_spoil = self.topic_spoil
 
         description, text = self.preprocessor.fit(id_=id_, topic=self.topic, topic_spoil=topic_spoil,
                                                   spoil_size=spoil_size)
-        return 'Текст: ' + (text or '') + '[SEP]' + ' Описание: ' + (description or ''), (
-                spoil_size + topic_spoil > 0)
+        return f'Текст: {text or ""} [SEP] Описание: {description or ""}', spoil_size + topic_spoil > 0

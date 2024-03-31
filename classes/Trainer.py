@@ -30,8 +30,33 @@ class Trainer:
                  best_model_path='best_model',
                  train_window_size=10,
                  test_window_size=5,
-                 epochs=2, max_len=512,
+                 max_len=512,
+                 epochs=10,
                  learning_rate=0.0005, metric_to_use='f1', min_spoil=1, timer=1, scheduler=None):
+        """
+        :param model: model to train
+        :param device: device used for model training
+        :param train: train data
+        :param validate: validation data
+        :param test: test data
+        :param params: grid of hyperparams for best model selection
+        :param dataset: dataset derived from torch.utils.data.Dataset
+        :param dataloader: dataloader derived from torch.utils.data.DataLoader
+        :param preprocessor: preprocessor to pass to dataset 
+        :param lossf: loss function to use
+        :param optimizer: optimizer to use
+        :param base_dir: base directory to save data to
+        :param best_model_path: best model will be saved at f'{base_dir}{best_model_tpath}'
+        :param train_window_size: number of train batches for average score calculation
+        :param train_window_size: number of test batches for average score calculation
+        :param max_len: maximal length for Tokenizer
+        :param epochs: number of epochs for model training
+        :param learning_rate: learning rate
+        :param metric_to_use: which metric should be considered for best model choosing
+        :param min_spoil: lower bound for max_spoil
+        :param timer: each 'timer' epochs max_spoil is lowered
+        :param scheduler: scheduler to use (None by default)
+        """
 
         try:
             self.model = model(device, max_len=max_len).to(device)
@@ -73,12 +98,11 @@ class Trainer:
         self.metric_to_use = metric_to_use
         self.best_metric = -float('inf')
 
+        self.epochs = epochs
         self.params = params
         self.num = 0
 
         self.data = dict()
-
-        self.epochs = epochs
 
         self.scheduler = None if scheduler is None else scheduler()
 
@@ -233,7 +257,7 @@ class Trainer:
     def save_model(self, metric, epoch, verbose):
         if metric > self.best_metric:
             self.best_metric = metric
-            torch.save(self.model.state_dict(), self.best_model_path)
+            torch.save(self.model.state_dict(), f'{self.base_dir}{self.best_model_path}')
             if verbose:
                 print(f'Saving best model with {self.metric_to_use} {metric}')
 
