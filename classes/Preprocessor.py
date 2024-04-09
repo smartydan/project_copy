@@ -12,7 +12,7 @@ class Preprocessor:
         :param topic_to_russian: topic to russian translation
         :param people_num: number of assessors needed to consider an aggregated parameter as valid
         """
-        self.df = df
+        self.df = df.drop_duplicates(subset=['document.id', 'assessor', 'seed_eth_group'])
         self.args = args
         self.var_vocab = var_vocab
         self.topic_to_russian = topic_to_russian
@@ -23,8 +23,8 @@ class Preprocessor:
 
     def define(self, x):
         """
-        :return: the mode if it's unique and considered as true value 
-            by least people_num people else None 
+        :return: the mode if it's unique and considered as true value
+            by least people_num people else None
         """
         counts = x.value_counts(dropna=False)
         mode = counts.iloc[0]
@@ -43,7 +43,7 @@ class Preprocessor:
         if ethnicity:
             data = self.data[self.data['seed_eth_group'] == ethnicity][var]
         else:
-            data = self.data[var]
+            data = self.data.drop_duplicates(subset='assessor')[var]
         value = self.define(data)
         labels = self.var_vocab[var]['labels']
         if value and value in labels:
@@ -53,7 +53,7 @@ class Preprocessor:
             if desc:
                 if self.description:
                     self.description += ', '
-                
+
                 if ethnicity:
                     self.description += desc.format(ethnicity)
                 else:
@@ -74,7 +74,7 @@ class Preprocessor:
             value = self.define(topics_data[topic])
             if value == 1:
                 true_topics.append(topic)
-            else:
+            elif value is not None:
                 false_topics.append(topic)
 
         for topic in true_topics:
@@ -99,7 +99,7 @@ class Preprocessor:
         :return: description of a given text
         """
 
-        self.data = self.df.loc[self.df['document.id'] == id_].drop_duplicates(subset=['assessor', 'seed_eth_group'])
+        self.data = self.df.loc[self.df['document.id'] == id_]
         sz = self.data.shape[0]
 
         if sz == 0:
