@@ -225,7 +225,7 @@ class Trainer:
 
         return sum_loss / len(self.train_loader), metric
 
-    def train(self, epochs, verbose=False, plot=True, save=True):
+    def train(self, epochs, verbose=False, plot=True, save=False):
         for epoch in range(epochs):
             time = datetime.now()
 

@@ -30,19 +30,20 @@ class MyDataset(Dataset):
         self.tokenizer = tokenizer
         self.topic = topic
         self.spoil_proba = spoil_proba
-
+        self.unique_ids = self.df.index.unique()
+        
     def __len__(self):
         """
         :return: length of the dataset
         """
-        return len(self.df.index)
+        return len(self.unique_ids)
 
     def __getitem__(self, idx):
         """
         :param idx: index of the sample to be returned
         :return: [description, target]
         """
-        id_ = self.df.index[idx]
+        id_ = self.unique_ids[idx]
         spoil_size = topic_spoil = 0
 
         if np.random.random() < self.spoil_proba:

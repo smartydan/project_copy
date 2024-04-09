@@ -99,7 +99,7 @@ class Preprocessor:
         :return: description of a given text
         """
 
-        self.data = self.df.loc[self.df['document.id'] == id_].drop_duplicates(subset='assessor')
+        self.data = self.df.loc[self.df['document.id'] == id_].drop_duplicates(subset=['assessor', 'seed_eth_group'])
         sz = self.data.shape[0]
 
         if sz == 0:
