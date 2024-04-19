@@ -88,7 +88,12 @@ class Preprocessor:
         if add_topics:
             self.description += 'Текст имеет темы: ' + add_topics
 
-    def fit(self, id_, not_to_spoil=None, spoil_size=0, topic=False, list_ethnicities=False, topic_spoil=0):
+    def get_prompt(self, var, eths):
+        if self.var_vocab[var]['aspect_level']:
+            return ", ".join(self.var_vocab[var]['prompt'].format(eth) for eth in eths)
+        return self.var_vocab[var]['prompt']
+
+    def fit(self, id_, not_to_spoil=None, spoil_size=0, topic=False, list_ethnicities=False, topic_spoil=0, prompt=False, prompt_list=None):
         """
         :param id_: id of a sample to describe
         :param not_to_spoil: parametes that won't be spoil anyway
@@ -96,6 +101,8 @@ class Preprocessor:
         :param topic: if True, topics will be included into description
         :param list_ethnicities: if True, list of mentioned ethincities will be included into description
         :param topic_spoil: spoil percent for topics
+        :param prompt: if True, prompt will be generated at the beginning of return
+        :param prompt_list: list of args to include in prompt, if None, all will be included
         :return: description of a given text
         """
 
@@ -104,14 +111,24 @@ class Preprocessor:
 
         if sz == 0:
             print("No such id")
-            return
+            return None, None
 
         not_to_spoil = not_to_spoil or []
 
         self.description = ''
+        self.prompt = ''
+
+        eths = self.data['seed_eth_group'].unique()
+
+        if prompt:
+            self.prompt += 'Сгенерируй описание следующего текста, оцени'
+            if prompt_list:
+                self.prompt += ", ".join(self.get_prompt(arg, eths) for arg in prompt_list if arg in self.args)
+            else:
+                self.prompt += ", ".join(self.get_prompt(arg, eths) for arg in self.args)
+            self.prompt += "."
 
         to_spoil = np.random.choice(list(set(self.args) - set(not_to_spoil)), size=spoil_size, replace=False)
-        eths = self.data['seed_eth_group'].unique()
 
         if list_ethnicities:
             self.description += f'В этом тексте упоминается {", ".join(eth for eth in eths)}.'
@@ -128,4 +145,4 @@ class Preprocessor:
 
         self.description += '\n'
 
-        return self.description, self.data.iloc[0].source_text
+        return (self.prompt, self.description, self.data.iloc[0].source_text) if prompt else (self.description, self.data.iloc[0].source_text)

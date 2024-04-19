@@ -18,7 +18,7 @@ class MyDataset(Dataset):
         :param spoil_proba: probability of spoling a description
         """
 
-        self.df = df
+        self.df = df.copy()
         self.preprocessor = preprocessor
 
         if id_column:
