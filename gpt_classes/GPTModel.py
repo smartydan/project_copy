@@ -37,8 +37,10 @@ class GPTModel(nn.Module):
     def generate(self, sentence):
         sentence_enc = self.tokenizer.encode(sentence, return_tensors='pt') 
         output = self.model.generate(sentence_enc, max_new_tokens=self.max_len_model, num_beams=2, no_repeat_ngram_size=self.ngram, early_stopping=True)
-        if output[0] is not None and output[0] != "":
+        try:
             return self.tokenizer.decode(output[0])
+        except:
+            return ""
 
     def forward(self, x, y):
         """
