@@ -1,7 +1,7 @@
 from datetime import datetime
 from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
-from torchtext.data.metrics import bleu_score 
+# from torchtext.data.metrics import bleu_score 
 
 from itertools import product
 from IPython.display import clear_output
@@ -9,7 +9,6 @@ from IPython.display import clear_output
 import numpy as np
 
 import pickle
-
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -21,14 +20,15 @@ class GPTTrainer:
     def __init__(self, model, device, train, validate, test, dataset, args, dataloader,
                  save=True,
                  preprocessor=None,
-                 optimizer=torch.optim.Adam, batch_size=10,
+                 optimizer=torch.optim.Adam, batch_size=2,
                  base_dir='data/',
                  best_model_path='best_model',
                  train_window_size=10,
                  test_window_size=5,
-                 max_len=512,
+                 max_len=2048,
+                 cut_labels = False,
                  epochs=10, number_of_generations=10,
-                 learning_rate=0.0005, metric_to_use='bleu_score', min_spoil=1, timer=1):
+                 learning_rate=0.0005, metric_to_use='bleu_score'):
         """
         :param model: model to train
         :param device: device used for model training
@@ -78,14 +78,13 @@ class GPTTrainer:
         self.validate = validate
 
         self.device = device
+        self.model.to(self.device)
         self.lr = learning_rate
         self.batch_size = batch_size
         self.base_dir = base_dir
         self.best_model_path = best_model_path
         self.train_window_size = train_window_size
         self.test_window_size = test_window_size
-        self.min_spoil = min_spoil
-        self.timer = timer
 
         self.save = save
 
@@ -99,7 +98,8 @@ class GPTTrainer:
 
         self.number_of_gen = number_of_generations
         self.ids = np.random.choice(range(len(self.test_loader)), size=min(number_of_generations, len(self.test_loader)), replace=False)
-
+        
+        self.cut_data = cut_labels
         self.data = dict()
 
 
@@ -127,7 +127,7 @@ class GPTTrainer:
 
         for i, (data, cut_data) in enumerate(tqdm(self.train_loader), 1):
             self.optimizer.zero_grad()
-            outputs = self.model(data, cut_data)
+            outputs = self.model(data, cut_data if self.cut_data else data, self.cut_data)
             loss = outputs.loss
             loss.backward()
             self.optimizer.step()
@@ -177,7 +177,7 @@ class GPTTrainer:
             if 'generated' not in self.data[self.num][epoch]:
                 self.data[self.num][epoch]['generated'] = []
             
-            self.data[self.num][epoch]['generated'].append((id_, self.model.generate(self.test_dataset[id_]))) # добавляем id и сгенерированное описание
+            self.data[self.num][epoch]['generated'].append((id_, self.model.my_generate(self.test_dataset[id_]))) # добавляем id и сгенерированное описание
 
         if verbose:
             print(f"Calculating epoch {epoch + 1} validation scores")

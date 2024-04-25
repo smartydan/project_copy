@@ -1,5 +1,5 @@
 from torch import nn
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, AutoModelForCausalLM, AutoTokenizer
 
 class GPTModel(nn.Module):
     """Pretrained model with custom text classificator."""
@@ -12,8 +12,8 @@ class GPTModel(nn.Module):
         """
         super().__init__()
         try:
-            self.model = GPT2LMHeadModel.from_pretrained(pretrained_model_path)
-            self.tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model_path, model_max_length=max_len)
+            self.model = AutoModelForCausalLM.from_pretrained(pretrained_model_path)
+            self.tokenizer =  AutoTokenizer.from_pretrained(pretrained_model_path, model_max_length=max_len)
         except OSError:
             print("Could not load pretrained model")
         self.device = device
@@ -34,15 +34,12 @@ class GPTModel(nn.Module):
 
         self.ngram = ngrams
 
-    def generate(self, sentence):
-        sentence_enc = self.tokenizer.encode(sentence, return_tensors='pt') 
+    def my_generate(self, sentence):
+        sentence_enc = self.tokenizer.encode(sentence, return_tensors='pt').to(self.device)
         output = self.model.generate(sentence_enc, max_new_tokens=self.max_len_model, num_beams=2, no_repeat_ngram_size=self.ngram, early_stopping=True)
-        try:
-            return self.tokenizer.decode(output[0])
-        except:
-            return ""
+        return self.tokenizer.decode(output[0])
 
-    def forward(self, x, y):
+    def forward(self, x, y, cut=False):
         """
         :param x: input text
         :param y: text with description cut
@@ -50,12 +47,13 @@ class GPTModel(nn.Module):
         """
         
         tokenized = self.tokenizer(x, padding=True, truncation=True, return_tensors="pt").to(self.device)  # токенизируем
-        tokenized_nodesc = self.tokenizer(y, padding=True, truncation=True, return_tensors="pt").to(self.device)
-    
-        input_ids = tokenized['input_ids']
-        input_ids_nodesc = tokenized['input_ids']
-           
-        for i in range(input_ids.size(0)):
-            input_ids[i][:len(input_ids_nodesc[i])] = self.tokenizer.pad_token_id
-    
+        input_ids = tokenized['input_ids'].clone()
+        
+        if cut:
+            tokenized_nodesc = self.tokenizer(y, padding=True, truncation=True, return_tensors="pt").to(self.device)
+            input_ids_nodesc = tokenized_nodesc['input_ids']
+            for i in range(input_ids.size(0)):
+                input_ids[i][:(input_ids_nodesc[i]!=self.tokenizer.pad_token_id).sum()] = self.tokenizer.pad_token_id
+        
+        input_ids[input_ids == self.tokenizer.pad_token_id] = -100
         return self.model(**tokenized, labels=input_ids)
