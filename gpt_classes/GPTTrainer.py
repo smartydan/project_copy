@@ -28,7 +28,7 @@ class GPTTrainer:
                  max_len=2048,
                  cut_labels = False,
                  epochs=10, number_of_generations=10,
-                 learning_rate=0.0005, metric_to_use='bleu_score'):
+                 learning_rate=0.0005):
         """
         :param model: model to train
         :param device: device used for model training
@@ -48,7 +48,6 @@ class GPTTrainer:
         :param max_len: maximal length for Tokenizer
         :param epochs: number of epochs for model training
         :param learning_rate: learning rate
-        :param metric_to_use: which metric should be considered for best model choosing
         """
 
         try:
@@ -65,13 +64,10 @@ class GPTTrainer:
         self.max_len = max_len
 
         try:
-            self.train_loader = dataloader(self.train_dataset, batch_size=batch_size)
+            self.train_loader = dataloader(self.train_dataset, batch_size=batch_size, shuffle=True)
             self.test_loader = dataloader(self.test_dataset, batch_size=batch_size)
         except OSError:
             print("Could not load dataset")
-
-        if metric_to_use not in ['bleu_score']:
-            raise ValueError("metric_to use must be one of 'bleu_score'")
 
         self.train_ = train
         self.test_ = test
@@ -90,7 +86,6 @@ class GPTTrainer:
 
         self.opt = optimizer
         self.optimizer = optimizer(self.model.parameters(), lr=learning_rate)
-        self.metric_to_use = metric_to_use
         self.best_metric = -float('inf')
 
         self.epochs = epochs
@@ -103,11 +98,12 @@ class GPTTrainer:
         self.data = dict()
 
 
-    def reinitialize(self, batch_size, lr, ngrams):
+    def reinitialize(self, cut_data, batch_size, lr, ngrams):
+        self.cut_data = cut_data
         self.model.reinitialize(ngrams)
         self.model.to(self.device)
 
-        self.train_loader = self.dataloader(self.train_dataset, batch_size=batch_size)
+        self.train_loader = self.dataloader(self.train_dataset, batch_size=batch_size, shuffle=True)
         self.test_loader = self.dataloader(self.test_dataset, batch_size=batch_size)
 
         self.optimizer = self.opt(self.model.parameters(), lr=lr)
@@ -157,6 +153,7 @@ class GPTTrainer:
         with torch.no_grad():
             for i, (data, cut_data) in enumerate(tqdm(self.test_loader), 1):
                 outputs = self.model(data, cut_data)
+                outputs.vals
                 loss_ = outputs.loss.item()
 
                 if self.num not in self.data:
@@ -246,6 +243,28 @@ class GPTTrainer:
         plt.xlabel('Batches')
         plt.ylabel('Loss')
         plt.show()
+
+    def calculate_scores(self, y_true, y_pred, on_train=False, verbose=False):
+        y_true = y_true.cpu().detach().numpy()
+        y_pred = y_pred.cpu().detach().numpy()
+
+        bleu_score = self.bleu(y_true, y_pred)
+
+        if verbose:
+            print(f'bleu: {bleu_score:.5f}')
+
+        if not self.num in self.data:
+            self.data[self.num] = dict()
+        
+        if on_train:
+            if not 'train_metrics' in self.data[self.num]:
+                self.data[self.num]['train_metrics'] = {'bleu': []}
+            self.data[self.num]['train_metrics']['bleu'].append(bleu_score)
+        else:
+            if not 'test_metrics' in self.data[self.num]:
+                self.data[self.num]['test_metrics'] =  {'bleu': []}
+
+            self.data[self.num]['test_metrics']['bleu'].append(bleu_score)
 
     def save(self):
         with open(f'{self.base_dir}/data.pkl', 'wb') as f:

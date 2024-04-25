@@ -121,7 +121,7 @@ class Preprocessor:
         eths = self.data['seed_eth_group'].unique()
 
         if prompt:
-            self.prompt += 'Сгенерируй описание следующего текста, оцени'
+            self.prompt += 'Сгенерируй описание следующего текста, оцени '
             if prompt_list:
                 self.prompt += ", ".join(self.get_prompt(arg, eths) for arg in prompt_list if arg in self.args)
             else:

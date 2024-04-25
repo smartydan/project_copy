@@ -1,5 +1,5 @@
 from torch import nn
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class GPTModel(nn.Module):
     """Pretrained model with custom text classificator."""
@@ -13,7 +13,7 @@ class GPTModel(nn.Module):
         super().__init__()
         try:
             self.model = AutoModelForCausalLM.from_pretrained(pretrained_model_path)
-            self.tokenizer =  AutoTokenizer.from_pretrained(pretrained_model_path, model_max_length=max_len)
+            self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_path, model_max_length=max_len)
         except OSError:
             print("Could not load pretrained model")
         self.device = device
@@ -27,8 +27,8 @@ class GPTModel(nn.Module):
         Reloads model and tokenizer
         """
         try:
-            self.model = GPT2LMHeadModel.from_pretrained(self.path)
-            self.tokenizer = GPT2Tokenizer.from_pretrained(self.path, model_max_length=self.max_len)
+            self.model = AutoModelForCausalLM.from_pretrained(self.path)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.path, model_max_length=self.max_len)
         except OSError:
             print("Could not load pretrained model")
 
@@ -37,7 +37,7 @@ class GPTModel(nn.Module):
     def my_generate(self, sentence):
         sentence_enc = self.tokenizer.encode(sentence, return_tensors='pt').to(self.device)
         output = self.model.generate(sentence_enc, max_new_tokens=self.max_len_model, num_beams=2, no_repeat_ngram_size=self.ngram, early_stopping=True)
-        return self.tokenizer.decode(output[0])
+        return self.tokenizer.decode(output[0], skip_special_tokens=True)
 
     def forward(self, x, y, cut=False):
         """
