@@ -35,9 +35,11 @@ class GPTModel(nn.Module):
         self.ngram = ngrams
 
     def my_generate(self, sentence):
-        sentence_enc = self.tokenizer.encode(sentence, return_tensors='pt').to(self.device)
-        output = self.model.generate(sentence_enc, max_new_tokens=self.max_len_model, num_beams=2, no_repeat_ngram_size=self.ngram, early_stopping=True)
-        return self.tokenizer.decode(output[0], skip_special_tokens=True)
+        sentence_enc = self.tokenizer(sentence, padding=True, return_tensors='pt').to(self.device)
+        output = self.model.generate(**sentence_enc, max_new_tokens=self.max_len_model, num_beams=2, no_repeat_ngram_size=self.ngram, early_stopping=True)
+        if output.size(0) == 1:
+            return self.tokenizer.decode(output[0], skip_special_tokens=True)
+        return [self.tokenizer.decode(el, skip_special_tokens=True) for el in output]
 
     def forward(self, x, y, cut=False):
         """

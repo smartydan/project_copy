@@ -12,6 +12,7 @@ import pickle
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torchmetrics.text import BLEUScore
 
 
 class GPTTrainer:
@@ -97,6 +98,8 @@ class GPTTrainer:
         self.cut_data = cut_labels
         self.data = dict()
 
+        self.bleu = BLEUScore()
+
 
     def reinitialize(self, cut_data, batch_size, lr, ngrams):
         self.cut_data = cut_data
@@ -150,10 +153,24 @@ class GPTTrainer:
     def validate_one_epoch(self, epoch, verbose=False):
         sum_loss = 0
 
+        all_generated = []
+        all_targets = []
+
         with torch.no_grad():
             for i, (data, cut_data) in enumerate(tqdm(self.test_loader), 1):
                 outputs = self.model(data, cut_data)
-                outputs.vals
+
+
+                for el in data:
+                    descr = el.split("Описание: ", 1)[1]
+                    all_targets.append([descr])
+                
+                generated = self.model.my_generate(cut_data)
+                all_generated.extend(generated)
+
+                
+                
+                
                 loss_ = outputs.loss.item()
 
                 if self.num not in self.data:
@@ -176,6 +193,13 @@ class GPTTrainer:
             
             self.data[self.num][epoch]['generated'].append((id_, self.model.my_generate(self.test_dataset[id_]))) # добавляем id и сгенерированное описание
 
+
+        if not 'test_metrics' in self.data[self.num]:
+            self.data[self.num]['test_metrics'] =  {'bleu': []}
+
+        bleu_score = self.bleu(all_generated, all_targets)
+        self.data[self.num]['test_metrics']['bleu'].append(bleu_score)
+        
         if verbose:
             print(f"Calculating epoch {epoch + 1} validation scores")
 
@@ -212,12 +236,6 @@ class GPTTrainer:
         path = f'{self.base_dir}/epoch_{epoch}_num_{self.num}_loss_{metric}'
         torch.save(self.model.state_dict(), path)
 
-    def load_model(self, model_path):
-        model = MyModel(self.device)
-        model.load_state_dict(torch.load(model_path))
-        model.eval()
-        return model
-
     def plot_loss(self, on_train=False):
         if on_train:
 
@@ -243,28 +261,6 @@ class GPTTrainer:
         plt.xlabel('Batches')
         plt.ylabel('Loss')
         plt.show()
-
-    def calculate_scores(self, y_true, y_pred, on_train=False, verbose=False):
-        y_true = y_true.cpu().detach().numpy()
-        y_pred = y_pred.cpu().detach().numpy()
-
-        bleu_score = self.bleu(y_true, y_pred)
-
-        if verbose:
-            print(f'bleu: {bleu_score:.5f}')
-
-        if not self.num in self.data:
-            self.data[self.num] = dict()
-        
-        if on_train:
-            if not 'train_metrics' in self.data[self.num]:
-                self.data[self.num]['train_metrics'] = {'bleu': []}
-            self.data[self.num]['train_metrics']['bleu'].append(bleu_score)
-        else:
-            if not 'test_metrics' in self.data[self.num]:
-                self.data[self.num]['test_metrics'] =  {'bleu': []}
-
-            self.data[self.num]['test_metrics']['bleu'].append(bleu_score)
 
     def save(self):
         with open(f'{self.base_dir}/data.pkl', 'wb') as f:
