@@ -115,7 +115,7 @@ class Trainer:
         loss = self.lossf(outputs, outputs)
         loss.backward()
 
-    def reinitialize(self, batch_size, lr, max_spoil, spoil_proba):
+    def reinitialize(self, batch_size, lr, max_spoil, spoil_proba, timer=None):
         self.model.reinitialize()
         self.model.to(self.device)
 
@@ -127,6 +127,7 @@ class Trainer:
             loader.dataset.spoil_proba = spoil_proba
 
         self.optimizer = self.opt(self.model.parameters(), lr=lr)
+        self.timer=timer
 
     def choose_model(self):
         for val in product(*self.params.values()):
@@ -138,7 +139,7 @@ class Trainer:
             self.num += 1
 
     def check(self, epoch):
-        if epoch % self.timer == 0:
+        if self.timer != 0 and epoch % self.timer == 0:
             if self.test_loader.dataset.max_spoil > self.min_spoil:
                 self.test_loader.dataset.max_spoil -= 1
 
