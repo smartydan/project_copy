@@ -115,7 +115,7 @@ class Trainer:
         loss = self.lossf(outputs, outputs)
         loss.backward()
 
-    def reinitialize(self, batch_size, lr, max_spoil, spoil_proba, timer=None):
+    def reinitialize(self, batch_size, lr, max_spoil, spoil_proba, timer):
         self.model.reinitialize()
         self.model.to(self.device)
 
