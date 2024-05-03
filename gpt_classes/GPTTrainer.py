@@ -1,7 +1,6 @@
 from datetime import datetime
 from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
-# from torchtext.data.metrics import bleu_score 
 
 from itertools import product
 from IPython.display import clear_output
@@ -13,7 +12,6 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchmetrics.text import BLEUScore
-
 
 class GPTTrainer:
     """Class for model training and validation."""
@@ -93,15 +91,23 @@ class GPTTrainer:
         self.num = 0
 
         self.number_of_gen = number_of_generations
-        self.ids = np.random.choice(range(len(self.test_loader)), size=min(number_of_generations, len(self.test_loader)), replace=False)
+
+        mx = len(self.test_dataset)
+        self.ids = np.random.choice(range(mx), size=min(number_of_generations, mx), replace=False)
         
         self.cut_data = cut_labels
         self.data = dict()
 
         self.bleu = BLEUScore()
 
+        self.cached = dict()
 
-    def reinitialize(self, cut_data, batch_size, lr, ngrams):
+
+    def reinitialize(self, **kwargs):
+        for k, v in kwargs.items():
+            print(k, v)
+        return 
+        
         self.cut_data = cut_data
         self.model.reinitialize(ngrams)
         self.model.to(self.device)
@@ -114,7 +120,9 @@ class GPTTrainer:
     def choose_model(self, params):
         for val in product(*params.values()):
             params_ = {k: v for k, v in zip(params, val)}
+
             self.reinitialize(**params_)
+            
             self.data[self.num] = dict()
             self.data[self.num]['params'] = params_
             self.train(self.epochs)
@@ -185,15 +193,20 @@ class GPTTrainer:
                 if verbose and i % self.test_window_size == 0:
                     print(f"Batch {i} validation")
 
+        cnt = 0
         for id_ in self.ids:
             if epoch not in self.data[self.num]:
                 self.data[self.num][epoch] = {}
             if 'generated' not in self.data[self.num][epoch]:
                 self.data[self.num][epoch]['generated'] = []
-            
-            self.data[self.num][epoch]['generated'].append((id_, self.model.my_generate(self.test_dataset[id_]))) # добавляем id и сгенерированное описание
+
+            generated_text = self.model.my_generate(self.test_dataset[id_])
+            cnt += (generated_text == self.test_dataset[id_])
+            self.data[self.num][epoch]['generated'].append((id_, generated_text)) # добавляем id и сгенерированное описание
 
 
+        self.data[self.num][epoch]['matched_with_descr'] = cnt / len(self.ids)
+        
         if not 'test_metrics' in self.data[self.num]:
             self.data[self.num]['test_metrics'] =  {'bleu': []}
 
@@ -230,10 +243,10 @@ class GPTTrainer:
                 print(f'Time taken for epoch {epoch + 1}: {datetime.now() - time}\n')
 
             if save or self.save:
-                self.save_model(v_loss, epoch, verbose)
+                self.save_model(epoch, verbose)
 
-    def save_model(self, metric, epoch, verbose):
-        path = f'{self.base_dir}/epoch_{epoch}_num_{self.num}_loss_{metric}'
+    def save_model(self, epoch, verbose):
+        path = f'{self.base_dir}/epoch_{epoch}_num_{self.num}'
         torch.save(self.model.state_dict(), path)
 
     def plot_loss(self, on_train=False):
