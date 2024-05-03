@@ -100,22 +100,18 @@ class GPTTrainer:
 
         self.bleu = BLEUScore()
 
-        self.cached = dict()
+        self.cached = dict() # not used yet
 
 
-    def reinitialize(self, **kwargs):
-        for k, v in kwargs.items():
-            print(k, v)
-        return 
-        
-        self.cut_data = cut_data
-        self.model.reinitialize(ngrams)
+    def reinitialize(self, **inp):
+        self.cut_data = inp['cut_data']
+        self.model.reinitialize(inp['ngrams'])
         self.model.to(self.device)
 
-        self.train_loader = self.dataloader(self.train_dataset, batch_size=batch_size, shuffle=True)
-        self.test_loader = self.dataloader(self.test_dataset, batch_size=batch_size)
+        self.train_loader = self.dataloader(self.train_dataset, batch_size=inp['batch_size'], shuffle=True)
+        self.test_loader = self.dataloader(self.test_dataset, batch_size=inp['batch_size'])
 
-        self.optimizer = self.opt(self.model.parameters(), lr=lr)
+        self.optimizer = self.opt(self.model.parameters(), lr=inp['lr'])
 
     def choose_model(self, params):
         for val in product(*params.values()):
