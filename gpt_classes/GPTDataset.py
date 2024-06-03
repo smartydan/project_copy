@@ -2,7 +2,7 @@ from torch.utils.data import Dataset, DataLoader
 
 class GPTDataset(Dataset):
 
-    def __init__(self, df, preprocessor, args, id_column='document.id', topic=False, num=None, fixed=True):
+    def __init__(self, df, preprocessor, args, id_column='document.id', topic=False, num=None, fixed=True, sp=False):
         """
         :param df: input data in DataFrame format
         :param preprocessor: class to generate prompt and decription
@@ -11,6 +11,7 @@ class GPTDataset(Dataset):
         :param topic: if True topics will be included in the decription
         :param num: number of args to include in prompt, if None, all will be included
         :param fixed: if False, args will be choosen on each iteration
+        :param sp: if True, id_ will also be returned
         """
 
         self.df = df.copy()
@@ -26,6 +27,7 @@ class GPTDataset(Dataset):
         self.num = min(num or 0, len(args))
         self.fixed = fixed
         self.fixed_args = None
+        self.sp = sp
 
         if num and num > 0 and fixed:
             self.fixed_args = np.random.choise(self.args, size=num, replace=False)
@@ -47,5 +49,7 @@ class GPTDataset(Dataset):
             self.fixed_args = np.random.choise(self.args, size=self.num, replace=False)
 
         prompt, description, text = self.preprocessor.fit(id_=id_, topic=self.topic, topic_spoil=0, spoil_size=0, prompt=True, prompt_list=self.fixed_args)
-
+        
+        if self.sp:
+            return f'Задание: {prompt or ""}\nТекст: {text or ""}\nОписание: {description or ""}',  f'Задание: {prompt or ""}\nТекст: {text or ""}\nОписание:', id_
         return f'Задание: {prompt or ""}\nТекст: {text or ""}\nОписание: {description or ""}',  f'Задание: {prompt or ""}\nТекст: {text or ""}\nОписание:'
