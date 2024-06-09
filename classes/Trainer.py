@@ -22,7 +22,7 @@ from .MyModel import MyModel
 class Trainer:
     """Class for model training and validation."""
 
-    def __init__(self, model, device, train, validate, test, params=None, dataset=MyDataset, dataloader=DataLoader,
+    def __init__(self, model, train, validate, test, device='cpu', params=None, dataset=MyDataset, dataloader=DataLoader,
                  preprocessor=None,
                  lossf=nn.CrossEntropyLoss,
                  optimizer=torch.optim.Adam, batch_size=10,
