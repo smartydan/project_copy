@@ -3,4 +3,5 @@
 __pycache__
 *.txt
 /data
+/models
 *.json
