@@ -26,12 +26,13 @@ class Trainer:
                  preprocessor=None,
                  lossf=nn.CrossEntropyLoss,
                  optimizer=torch.optim.Adam, batch_size=10,
-                 base_dir='data/',
+                 base_dir='../data/',
                  best_model_path='best_model',
                  train_window_size=10,
                  test_window_size=5,
                  max_len=512,
                  epochs=10,
+                 spoil_proba=0.5,
                  learning_rate=0.0005, metric_to_use='f1', min_spoil=1, timer=1, scheduler=None):
         """
         :param model: model to train
@@ -51,6 +52,7 @@ class Trainer:
         :param train_window_size: number of test batches for average score calculation
         :param max_len: maximal length for Tokenizer
         :param epochs: number of epochs for model training
+        :param spoil_proba: probability of description being spoiled
         :param learning_rate: learning rate
         :param metric_to_use: which metric should be considered for best model choosing
         :param min_spoil: lower bound for max_spoil
@@ -63,8 +65,8 @@ class Trainer:
         except OSError:
             print("Could not load model to device")
 
-        self.train_dataset = dataset(train.copy(), preprocessor=preprocessor)
-        self.test_dataset = dataset(test.copy(), preprocessor=preprocessor)
+        self.train_dataset = dataset(train.copy(), preprocessor=preprocessor, spoil_proba=spoil_proba)
+        self.test_dataset = dataset(test.copy(), preprocessor=preprocessor, spoil_proba=spoil_proba)
         self.dataloader = dataloader
 
         self.max_len = max_len
